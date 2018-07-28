@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<head>
+    <title>SASS playground</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="styles.css"/>
+    <script src="sass.js"></script>
+    <script src="sass.worker.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>CSS TRACKER</h1>
+        <div class="spinner" style="display:none;">
+            <div class="buffer"></div>
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <div class="header col-xs-12">HTML</div>
+            <textarea class="html-value col-xs-12"></textarea>
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <div class="header col-xs-12">SASS</div>
+            <textarea class="sass-value col-xs-12"></textarea>
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <div class="header col-xs-12">CSS</div>
+            <textarea class="css-value col-xs-12"></textarea>
+        </div>
+        <div id="styles-container" style="display:none;">
+            <div class="hidden-html"></div>
+        </div>
+        <button class="col-md-4 col-sm-4 col-xs-12 track-btn btn btn-primary">Track Unused Selectors</button>
+        <div class="jumbotron">
+            <h5><u><b>Class/Id List</b></u></h5>
+            <div class="unused-css col-xs-12" style="display:none;"></div>
+            <div class="success-msg text-success" style="display:none;">No unwanted css selectors.Your code is clean and Awesome !!!!</div>
+        </div>
+    </div>
+    <script>
+        $('.track-btn').on('click',function() {
+            $('body').css('overflow','hidden');
+            $('.spinner').show();
+            $('.unused-css').html('').hide();
+            $('.success-msg').hide();
+            if($('.sass-value').val()) {
+                Sass.options({ style: Sass.style.expanded }, function(result) {
+                    console.log("set options");
+                });
+                var parseScssCss = '[ngContent001]{' + $('.sass-value').val() + '}';
+                Sass.compile(parseScssCss,function(result){
+                    console.log(result.text);
+                    if (!result.text) {
+                        alert('Please input proper scss styles. Please remove external scss file paths imported and Try Again !');
+                        $('.unused-css').html(result.message).show();
+                    }
+                    $('.css-value').val(result.text);
+                    var cssStyles = result.text,
+                        indexOfUnused = 0,
+                        htmlValue = $('.html-value').val(),
+                        styleTag = document.createElement('style');
+                    $('#styles-container').append($(styleTag).html(result.text));
+                    $('.hidden-html').html(htmlValue);
+                    var htmlValueToSearchAsString = htmlValue;
+                    if (!htmlValue) {
+                        alert('Enter proper html content');
+                    }
+                    var styleSheetRules = document.styleSheets[document.styleSheets.length-1].rules;
+                    if(styleSheetRules && styleSheetRules.length != 0) {
+                        for(var i=0;i<styleSheetRules.length;i++) {
+                            var selectorTextNameArray = styleSheetRules[i].selectorText;
+                            if (selectorTextNameArray) {
+                                selectorTextNameArray = selectorTextNameArray.replace('[ngContent001] ','').split(' ');
+                                for(var k=0;k<selectorTextNameArray.length;k++) {
+                                    var filterPsuedoIndex = selectorTextNameArray[k].search(/\[|\:|\:\:/),
+                                        filteredEle;
+                                    if (filterPsuedoIndex == -1) {
+                                        filteredEle = selectorTextNameArray[k].replace(',','');
+                                    } else {
+                                        filteredEle = selectorTextNameArray[k].substring(0,filterPsuedoIndex).replace(',','');
+                                    }
+                                    if (filteredEle.indexOf('.') >= 0 || filteredEle.indexOf('#') >= 0) {
+                                        var ele = $('.hidden-html').find(filteredEle),searchAsText=-1;
+                                        if (htmlValueToSearchAsString.indexOf('ngClass') >= 0 || htmlValueToSearchAsString.indexOf('ng-class') >= 0) {
+
+                                            searchAsText = htmlValueToSearchAsString.indexOf(filteredEle.replace(/\.|#/g,''));
+                                        }
+                                        if (ele.length == 0 && searchAsText == -1) {
+                                            console.log(filteredEle);
+                                            var unusedCssText = $('.unused-css').text();
+                                            if (unusedCssText.indexOf(filteredEle) < 0) {
+                                                indexOfUnused += 1;
+                                                var unusedCss = indexOfUnused + ') ' + filteredEle + '<br>';
+                                                $('.unused-css').append(unusedCss);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        var positonOfMsg;
+                        if (indexOfUnused == 0) {
+                            $('.success-msg').show();
+                            positonOfMsg = $('.success-msg').offset().top;
+                        } else {
+                            $('.unused-css').show();
+                            positonOfMsg = $('.unused-css').offset().top;
+                        }
+                        window.scrollTo(0,parseInt(positonOfMsg));
+                        $('body').css('overflow','auto');
+                        $('.spinner').hide();
+                    }
+                });
+            }
+            
+        });
+        
+    </script>
+</body>
+</html>
